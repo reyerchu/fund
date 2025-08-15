@@ -1,0 +1,82 @@
+{
+  "funds": [
+    {
+      "fundName": "ASVT Fund 966",
+      "fundSymbol": "AF966",
+      "vaultProxy": "0x7d4c4969e03A810501bb2194aaA793b3868fFdE3",
+      "comptrollerProxy": "0x819Be6C6bF52bC4a4e523EaCf40870361B604dA2",
+      "denominationAsset": "0x932b08d5553b7431FB579cF27565c7Cd2d4b8fE0",
+      "managementFee": 2,
+      "performanceFee": 10,
+      "sharePrice": "1.00",
+      "creator": "0x1cf1fb97e6a4afaa4167fa19d52ad19d6689c677",
+      "txHash": "0xc3ac900be43207e9e415b41e4ae9415959c11697235f26fd6d7efd479f55871a",
+      "id": "1",
+      "createdAt": "2025-08-14T13:55:27.696Z",
+      "updatedAt": "2025-08-14T13:55:27.696Z",
+      "status": "active"
+    },
+    {
+      "fundName": "USDC Fund 920",
+      "fundSymbol": "UF920",
+      "vaultProxy": "0x94699ECD2eB7A8369cDaF6ae9B53ebeBA188be72",
+      "comptrollerProxy": "0x2C9D0755444314E6da4264BC53550F5bF81B76F0",
+      "denominationAsset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "managementFee": 2,
+      "performanceFee": 10,
+      "sharePrice": "1.00",
+      "creator": "0x1cf1fb97e6a4afaa4167fa19d52ad19d6689c677",
+      "txHash": "0xe349e1b98c182efc49aa1531d7b35d08ef992fd425535a39745ff30f98196823",
+      "id": "2",
+      "createdAt": "2025-08-14T16:08:06.187Z",
+      "updatedAt": "2025-08-14T16:08:06.187Z",
+      "status": "active"
+    }
+  ],
+  "investments": [
+    {
+      "id": "2",
+      "fundId": "1",
+      "fundName": "ASVT Fund 966",
+      "fundSymbol": "AF966",
+      "investorAddress": "0x1cf1fb97e6a4afaa4167fa19d52ad19d6689c677",
+      "type": "deposit",
+      "amount": "1",
+      "shares": "1",
+      "sharePrice": "1.00",
+      "txHash": "0xffeab473c14457aee4d4cdf7597dc318930ed1855707707e3901af63dcc34873",
+      "timestamp": "2025-08-14T16:52:30.622Z",
+      "status": "completed"
+    },
+    {
+      "id": "3",
+      "fundId": "1",
+      "fundName": "ASVT Fund 966",
+      "fundSymbol": "AF966",
+      "investorAddress": "0x1cf1fb97e6a4afaa4167fa19d52ad19d6689c677",
+      "type": "deposit",
+      "amount": "1",
+      "shares": "1",
+      "sharePrice": "1.00",
+      "txHash": "0xa479ea17c88d70fd1e207e313fce9920fbd759bad1401a5e32a75fb282fe5680",
+      "timestamp": "2025-08-14T16:53:20.028Z",
+      "status": "completed"
+    },
+    {
+      "id": "4",
+      "fundId": "2",
+      "fundName": "USDC Fund 920",
+      "fundSymbol": "UF920",
+      "investorAddress": "0x1cf1fb97e6a4afaa4167fa19d52ad19d6689c677",
+      "type": "deposit",
+      "amount": "1",
+      "shares": "1",
+      "sharePrice": "1.00",
+      "txHash": "0xd82dcebd25c10ee96943dfb2ac7a2e92fd1a32bdb1cee8303f55ab3054c98037",
+      "timestamp": "2025-08-14T16:53:51.675Z",
+      "status": "completed"
+    }
+  ],
+  "lastFundId": 3,
+  "lastInvestmentId": 4
+}
