@@ -314,6 +314,23 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
     );
   }
 
+  // 計算已發行份額
+  const totalShares = fundInvestmentHistory.reduce((sum, r) => {
+    const shares = parseFloat(r.shares);
+    return r.type === 'deposit'
+      ? sum + shares
+      : sum - shares;
+  }, 0);
+
+  // 取得最新 sharePrice（可用 fund.sharePrice 或最後一筆投資記錄的 sharePrice）
+  const latestSharePrice =
+    fundInvestmentHistory.length > 0
+      ? parseFloat(fundInvestmentHistory[fundInvestmentHistory.length - 1].sharePrice)
+      : parseFloat(fund?.sharePrice || '1');
+
+  // 計算總資產 (AUM)
+  const totalAssets = totalShares * latestSharePrice;
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -333,17 +350,25 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-gray-900">
-                    ${formatTokenAmount(fund.totalAssets)}
+                    {totalAssets > 0
+                      ? `$${totalAssets.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      : '--'}
                   </p>
                   <p className="text-sm text-gray-600">總資產 (AUM)</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">${fund.sharePrice || '1.00'}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {latestSharePrice > 0
+                      ? `$${latestSharePrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
+                      : '--'}
+                  </p>
                   <p className="text-sm text-gray-600">份額淨值</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatTokenAmount(fund.totalShares)}
+                    {totalShares > 0
+                      ? totalShares.toLocaleString(undefined, { maximumFractionDigits: 6 })
+                      : '--'}
                   </p>
                   <p className="text-sm text-gray-600">已發行份額</p>
                 </div>
@@ -372,11 +397,10 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
             </div>
 
             {/* Asset Allocation */}
-            <div className="card">
+            {/* <div className="card">
               <h2 className="text-xl font-bold text-gray-900 mb-6">資產配置</h2>
               
               <div className="space-y-4">
-                {/* Mock asset data since it's not in FundData */}
                 {[
                   { symbol: 'ETH', percentage: 40, value: fund.totalAssets ? (parseFloat(formatTokenAmount(fund.totalAssets)) * 0.4).toFixed(2) : '0' },
                   { symbol: 'BTC', percentage: 30, value: fund.totalAssets ? (parseFloat(formatTokenAmount(fund.totalAssets)) * 0.3).toFixed(2) : '0' },
@@ -402,7 +426,7 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Fund Investment History */}
             <div className="card">
@@ -507,7 +531,21 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    預計獲得約 {depositAmount ? (parseFloat(depositAmount) / parseFloat(fund.sharePrice || '1')).toFixed(6) : '0'} 份額
+                    預計獲得約 {
+                    (() => {
+                            const amount = parseFloat(depositAmount);
+                            const sharePrice = parseFloat(fund.sharePrice || '1');
+                            const decimals = denominationAsset.decimals || 18;
+                            if (!depositAmount || isNaN(amount) || !isFinite(amount) || sharePrice <= 0 || isNaN(sharePrice)) {
+                              return '0';
+                            }
+                            // 計算份額
+                            const shares = amount / sharePrice;
+                            // USDC 6位，ETH 6~18位，這裡建議最多顯示6位
+                            return shares.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: Math.min(decimals, 6) });
+                          })()
+                        }
+                     份額
                   </p>
                 </div>
 

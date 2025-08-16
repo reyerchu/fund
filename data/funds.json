@@ -75,8 +75,36 @@
       "txHash": "0xd82dcebd25c10ee96943dfb2ac7a2e92fd1a32bdb1cee8303f55ab3054c98037",
       "timestamp": "2025-08-14T16:53:51.675Z",
       "status": "completed"
+    },
+    {
+      "id": "5",
+      "fundId": "2",
+      "fundName": "USDC Fund 920",
+      "fundSymbol": "UF920",
+      "investorAddress": "0xd97198d8a4beb435df06b1dc81ba383c3fc85ee4",
+      "type": "deposit",
+      "amount": "5",
+      "shares": "5",
+      "sharePrice": "1.0000",
+      "txHash": "0x5f046829dbeda410b4f8914d5b86297f00fc3ef49c26dd5fa6e8c5b6d1d6e665",
+      "timestamp": "2025-08-16T11:10:05.309Z",
+      "status": "completed"
+    },
+    {
+      "id": "6",
+      "fundId": "2",
+      "fundName": "USDC Fund 920",
+      "fundSymbol": "UF920",
+      "investorAddress": "0xd97198d8a4beb435df06b1dc81ba383c3fc85ee4",
+      "type": "redeem",
+      "amount": "1",
+      "shares": "1",
+      "sharePrice": "1.0000",
+      "txHash": "0x765c1075095ff08eed16c88cef84cddf332bfacb22b5f01567525e478f62e41c",
+      "timestamp": "2025-08-16T11:19:52.798Z",
+      "status": "completed"
     }
   ],
   "lastFundId": 3,
-  "lastInvestmentId": 4
+  "lastInvestmentId": 6
 }
