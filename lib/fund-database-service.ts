@@ -63,6 +63,21 @@ interface UserInvestmentSummary {
   lastTransactionDate: string;
 }
 
+// 新增：Swap 記錄介面
+interface SwapRecord {
+  id: string;
+  fundId: string;
+  vaultProxy: string;
+  fromToken: string;
+  toToken: string;
+  fromAmount: string;
+  toAmount: string;
+  txHash: string;
+  initiator: string;
+  timestamp: string;
+  status: 'pending' | 'completed' | 'failed';
+}
+
 class FundDatabaseService {
   private baseUrl = '/api/funds';
 
@@ -204,6 +219,56 @@ class FundDatabaseService {
     return result.data;
   }
 
+  // ========== Swap 記錄相關方法 ========== 
+
+  // 記錄 swap 操作
+  async recordSwap(data: {
+    fundId: string;
+    vaultProxy: string;
+    fromToken: string;
+    toToken: string;
+    fromAmount: string;
+    toAmount: string;
+    txHash: string;
+    initiator: string;
+    status?: 'pending' | 'completed' | 'failed';
+  }): Promise<SwapRecord> {
+    const response = await fetch(`${this.baseUrl}/swaps`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || '記錄 swap 操作失敗');
+    }
+    return result.data;
+  }
+
+  // 取得特定基金的所有 swap 記錄
+  async getFundSwapHistory(fundId: string): Promise<SwapRecord[]> {
+    const url = `${this.baseUrl}/swaps?fundId=${encodeURIComponent(fundId)}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || '獲取 swap 記錄失敗');
+    }
+    return result.data;
+  }
+
+  // 取得用戶的所有 swap 記錄
+  async getUserSwapHistory(initiator: string): Promise<SwapRecord[]> {
+    const url = `${this.baseUrl}/swaps?initiator=${encodeURIComponent(initiator)}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || '獲取 swap 記錄失敗');
+    }
+    return result.data;
+  }
+
   // ========== 基金統計數據方法 ==========
 
   // 獲取基金統計數據
@@ -314,4 +379,4 @@ class FundDatabaseService {
 
 // 導出單例實例
 export const fundDatabaseService = new FundDatabaseService();
-export type { FundData, CreateFundData, InvestmentRecord, UserInvestmentSummary };
+export type { FundData, CreateFundData, InvestmentRecord, UserInvestmentSummary, SwapRecord };

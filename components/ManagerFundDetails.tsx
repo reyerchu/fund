@@ -5,13 +5,19 @@ import { useWeb3 } from '../lib/web3-context';
 import { ethers } from 'ethers';
 import { DENOMINATION_ASSETS } from '../lib/contracts';
 import { formatTokenAmount } from '../lib/contracts';
+import { Chart, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend } from 'chart.js';
 import { FundService } from '../lib/fund-service';
 import { fundDatabaseService, FundData, InvestmentRecord, UserInvestmentSummary } from '../lib/fund-database-service';
+import { getHistoricalSharePrices, getRealtimeSharePrice, getVaultGAV } from '@/lib/infura-service';
+import { Line } from 'react-chartjs-2';
+import { SEPOLIA_MAINNET_RPC } from '@/lib/constant';
+import FundLineChart from './FundLineChart';
 
 interface ManagerFundDetailsProps {
   fundId: string;
 }
 
+Chart.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend);
 export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) {
   const { address, isConnected, provider } = useWeb3();
   const [fund, setFund] = useState<FundData | null>(null);
@@ -36,6 +42,129 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
   const [tradeAsset, setTradeAsset] = useState('ETH');
   const [tradeType, setTradeType] = useState('buy'); // 'buy' or 'sell'
   const [isTrading, setIsTrading] = useState(false);
+
+  const [historicalPrices, setHistoricalPrices] = useState<{ blockNumber: number, sharePrice: number }[]>([]);
+  const [realtimePrice, setRealtimePrice] = useState<number | null>(null);
+
+  const [gavHistory, setGavHistory] = useState<{ blockNumber: number, gav: number }[]>([]);
+  const [realtimeGAV, setRealtimeGAV] = useState<number | null>(null);
+
+  const [wethUsdPrice, setWethUsdPrice] = useState<number | null>(null);
+  const [wethUsdHisPrice, setWethUsdHisPrice] = useState<{ date: string; price: number }[] | null>([]);
+
+  const [chartType, setChartType] = useState<'sharePrice' | 'gavUsd' | 'wethUsd'>('sharePrice');
+
+  // 獲取計價資產
+  const denominationAsset = DENOMINATION_ASSETS.find(
+    asset => asset.address === fund?.denominationAsset
+  ) || DENOMINATION_ASSETS[0];
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (fund?.comptrollerProxy) {
+        try {
+          const prices = await getHistoricalSharePrices(fund.comptrollerProxy, denominationAsset.decimals);
+          setHistoricalPrices(prices);
+        } catch (e) {
+          console.warn('歷史價格查詢失敗', e);
+        }
+      }
+    };
+    loadHistory();
+  }, [fund]);
+
+  useEffect(() => {
+    const loadRealtime = async () => {
+      if (fund?.vaultProxy) {
+        try {
+          const price = await getRealtimeSharePrice(fund.vaultProxy, denominationAsset.decimals);
+
+          setRealtimePrice(Number(price));
+        } catch (e) {
+          console.warn('即時價格查詢失敗', e);
+        }
+      }
+    };
+    loadRealtime();
+  }, [fund]);
+
+  useEffect(() => {
+    const loadGavHistory = async () => {
+      if (fund?.vaultProxy && historicalPrices.length > 0) {
+        try {
+          const provider = new ethers.JsonRpcProvider(SEPOLIA_MAINNET_RPC);
+          const decimals = denominationAsset.decimals || 18;
+          const gavs = await Promise.all(
+            historicalPrices.map(async p => {
+              // 直接用 vaultProxy 查 GAV（可加 blockTag 但 Infura 可能不支援）
+              const gav = await getVaultGAV(fund.vaultProxy);
+              return { blockNumber: p.blockNumber, gav: Number(ethers.formatUnits(gav, decimals)) };
+            })
+          );
+
+          console.log("GAV History:", gavs);
+          setGavHistory(gavs);
+        } catch (e) {
+          console.warn('GAV 歷史查詢失敗', e);
+        }
+      }
+    };
+    loadGavHistory();
+  }, [fund, historicalPrices]);
+
+  // 查詢即時 GAV
+  useEffect(() => {
+    const loadRealtimeGAV = async () => {
+      if (fund?.vaultProxy) {
+        try {
+          const gav = await getVaultGAV(fund.vaultProxy);
+          setRealtimeGAV(Number(ethers.formatUnits(gav, denominationAsset.decimals || 18)));
+        } catch (e) {
+          console.warn('即時 GAV 查詢失敗', e);
+        }
+      }
+    };
+    loadRealtimeGAV();
+  }, [fund]);
+
+  useEffect(() => {
+    const loadWethHistoricalPrice = async () => {
+      try {
+        const priceFeedAddress = "0x694AA1769357215DE4FAC081bf1f309aDC325306"; // Sepolia WETH/USD
+        const priceFeedAbi = [
+          "function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)",
+          "function getRoundData(uint80 _roundId) view returns (uint80, int256, uint256, uint256, uint80)"
+        ];
+        // 用 RPC provider，不用 web3 context 的 provider
+        const rpcProvider = new ethers.JsonRpcProvider(SEPOLIA_MAINNET_RPC);
+        const priceFeed = new ethers.Contract(priceFeedAddress, priceFeedAbi, rpcProvider);
+        const [latestRoundId] = await priceFeed.latestRoundData();
+
+        const [, answer] = await priceFeed.latestRoundData();
+        setWethUsdPrice(Number(answer) / 1e8);
+        const history = [];
+        for (let i = 4; i >= 0; i--) { // 只查 5 筆
+          try {
+            const roundId = latestRoundId - BigInt(i);
+            const [, answer, , timestamp] = await priceFeed.getRoundData(roundId);
+            console.log(`WETH/USD Round ${roundId}:`, { answer: Number(answer) / 1e8, timestamp: Number(timestamp) });
+            history.push({
+              date: new Date(Number(timestamp) * 1000).toISOString().replace('T', ' ').slice(0, 19), // "2025-09-01 14:23:00"
+              price: Number(answer) / 1e8
+            });
+          } catch (e) {
+            // 快速跳過查不到的 round
+            continue;
+          }
+        }
+        setWethUsdHisPrice(history);
+      } catch (e) {
+        console.warn('WETH/USD 歷史價格查詢失敗', e);
+        setWethUsdHisPrice([]);
+      }
+    };
+    loadWethHistoricalPrice();
+  }, []);
 
   // 載入基金資料
   useEffect(() => {
@@ -134,11 +263,6 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
     }
   };
 
-  // 獲取計價資產
-  const denominationAsset = DENOMINATION_ASSETS.find(
-    asset => asset.address === fund?.denominationAsset
-  ) || DENOMINATION_ASSETS[0];
-
   const handleDeposit = async () => {
     if (!provider || !address || !depositAmount || !fund) return;
 
@@ -204,6 +328,22 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
       setIsDepositing(false);
     }
   };
+
+  async function settlePerformanceFee(comptrollerProxyAddress: string, signer: any) {
+    const performanceFeeAbi = [
+      "function settle(address _comptrollerProxy) external"
+    ];
+    const performanceFee = new ethers.Contract("0x82EDeB07c051D6461acD30c39b5762D9523CEf1C", performanceFeeAbi, signer);
+    try {
+      const tx = await performanceFee.settle(comptrollerProxyAddress);
+      await tx.wait();
+      console.log(`Performance fee settled for ${comptrollerProxyAddress}, tx: ${tx.hash}`);
+      return tx.hash;
+    } catch (error: any) {
+      console.error("Settle performance fee failed:", error);
+      throw error;
+    }
+  }
 
   const handleRedeem = async () => {
     if (!provider || !address || !redeemAmount || !fund) return;
@@ -330,6 +470,16 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
 
   // 計算總資產 (AUM)
   const totalAssets = totalShares * latestSharePrice;
+
+  const totalAssetsUSD = wethUsdPrice !== null ? totalAssets * wethUsdPrice : null;
+
+  const aumUsdHistory = gavHistory.map((g, i) => {
+    const wethUsdHisArr = wethUsdHisPrice ?? [];
+    return {
+      date: wethUsdHisArr[i]?.date || `#${g.blockNumber}`,
+      value: wethUsdHisArr[i] ? g.gav * wethUsdHisArr[i].price : g.gav * (wethUsdPrice || 1840)
+    };
+  });
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -366,12 +516,17 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-gray-900">
-                    {totalShares > 0
-                      ? totalShares.toLocaleString(undefined, { maximumFractionDigits: 6 })
-                      : '--'}
+                    {totalAssets.toLocaleString(undefined, { maximumFractionDigits: 4 })} WETH
                   </p>
                   <p className="text-sm text-gray-600">已發行份額</p>
                 </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {totalAssetsUSD !== null ? `$${totalAssetsUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '--'}
+                  </p>
+                  <p className="text-sm text-gray-600">WETH/USD</p>
+                </div>
+
                 {/* <div className="text-center">
                   <p className="text-2xl font-bold text-gray-900">{fund.totalInvestors || 0}</p>
                   <p className="text-sm text-gray-600">投資人數</p>
@@ -427,6 +582,56 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
                 ))}
               </div>
             </div> */}
+            <div className="flex gap-2 mb-4">
+              <button
+                className={`px-4 py-2 rounded ${chartType === 'sharePrice' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                onClick={() => setChartType('sharePrice')}
+              >份額價格走勢</button>
+              <button
+                className={`px-4 py-2 rounded ${chartType === 'gavUsd' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                onClick={() => setChartType('gavUsd')}
+              >AUM 美元化走勢</button>
+              <button
+                className={`px-4 py-2 rounded ${chartType === 'wethUsd' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                onClick={() => setChartType('wethUsd')}
+              >WETH/USD 價格走勢</button>
+            </div>
+
+            {chartType === 'sharePrice' && (
+              <FundLineChart
+                title="基金歷史份額價格走勢"
+                labels={[
+                  ...historicalPrices.map(p => p.blockNumber),
+                  realtimePrice !== null ? '即時' : null
+                ].filter(Boolean)}
+                data={[
+                  ...historicalPrices.map(p => p.sharePrice),
+                  ...(realtimePrice !== null ? [realtimePrice] : [])
+                ]}
+                color="rgba(54, 162, 235, 1)"
+                yLabel="份額價格"
+              />
+            )}
+
+            {chartType === 'gavUsd' && (
+              <FundLineChart
+                title="基金總資產 (AUM, USD) 走勢"
+                labels={aumUsdHistory.map(a => a.date)}
+                data={aumUsdHistory.map(a => a.value)}
+                color="rgba(255, 99, 132, 1)"
+                yLabel="AUM (USD)"
+              />
+            )}
+
+            {chartType === 'wethUsd' && (
+              <FundLineChart
+                title="WETH/USD 價格走勢"
+                labels={(wethUsdHisPrice ?? []).map(p => p.date)}
+                data={(wethUsdHisPrice ?? []).map(p => p.price)}
+                color="rgba(75, 192, 192, 1)"
+                yLabel="WETH/USD"
+              />
+            )}
 
             {/* Fund Investment History */}
             <div className="card">
@@ -539,10 +744,11 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
                             if (!depositAmount || isNaN(amount) || !isFinite(amount) || sharePrice <= 0 || isNaN(sharePrice)) {
                               return '0';
                             }
-                            // 計算份額
-                            const shares = amount / sharePrice;
-                            // USDC 6位，ETH 6~18位，這裡建議最多顯示6位
-                            return shares.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: Math.min(decimals, 6) });
+                            // 先將金額轉為最小單位（如 USDC 6 decimals）
+                            const amountInWei = amount * Math.pow(10, decimals);
+                            const sharePriceInWei = sharePrice * Math.pow(10, decimals);
+                            const shares = amountInWei / sharePriceInWei;
+                            return shares.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
                           })()
                         }
                      份額
@@ -646,6 +852,23 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
                 </div>
               </div>
             </div>
+
+            <button
+              className="w-full py-2 px-4 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white mt-4"
+              disabled={!provider || !fund?.comptrollerProxy}
+              onClick={async () => {
+                if (!provider || !fund?.comptrollerProxy) return;
+                try {
+                  const signer = await provider.getSigner();
+                  const txHash = await settlePerformanceFee(fund.comptrollerProxy, signer);
+                  alert(`結算成功！TxHash: ${txHash}`);
+                } catch (e: any) {
+                  alert(`結算失敗：${e.message || e}`);
+                }
+              }}
+            >
+              結算績效費
+            </button>
 
             {/* Fund Statistics */}
             <div className="card">

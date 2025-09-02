@@ -70,6 +70,73 @@ export const ERC20_ABI = [
     'function transfer(address to, uint256 amount) returns (bool)'
 ];
 
+export const addressListRegistryABI = [
+    "function createList(address creator, uint8 updateType, address[] addresses) external returns (uint256)"
+]
+
+// export const addressListRegistryABI = [
+//   {
+//     "inputs": [
+//       {
+//         "internalType": "address",
+//         "name": "_owner",
+//         "type": "address"
+//       },
+//       {
+//         "internalType": "enum IAddressListRegistry.UpdateType",
+//         "name": "_updateType",
+//         "type": "uint8"
+//       },
+//       {
+//         "internalType": "address[]",
+//         "name": "_initialItems",
+//         "type": "address[]"
+//       }
+//     ],
+//     "name": "createList",
+//     "outputs": [
+//       {
+//         "internalType": "uint256",
+//         "name": "id_",
+//         "type": "uint256"
+//       }
+//     ],
+//     "stateMutability": "nonpayable",
+//     "type": "function"
+//   },
+//   {
+//     "anonymous": false,
+//     "inputs": [
+//       {
+//         "indexed": true,
+//         "internalType": "address",
+//         "name": "caller",
+//         "type": "address"
+//       },
+//       {
+//         "indexed": false,
+//         "internalType": "address",
+//         "name": "owner",
+//         "type": "address"
+//       },
+//       {
+//         "indexed": false,
+//         "internalType": "uint256",
+//         "name": "id",
+//         "type": "uint256"
+//       },
+//       {
+//         "indexed": false,
+//         "internalType": "enum IAddressListRegistry.UpdateType",
+//         "name": "updateType",
+//         "type": "uint8"
+//       }
+//     ],
+//     "name": "ListCreated",
+//     "type": "event"
+//   }
+// ];
+
 // 工具函數：格式化代幣金額顯示
 export const formatTokenAmount = (amount: string | number | undefined, decimals = 18): string => {
   if (!amount || amount === '0' || amount === '0.0' || amount === '') {

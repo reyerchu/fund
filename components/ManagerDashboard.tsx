@@ -169,21 +169,21 @@ export default function ManagerDashboard() {
             </div>
           </div>
 
-          <div className="card">
+          {/* <div className="card">
             <div>
               <p className="text-sm text-gray-600">總投資人數</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{metrics.totalInvestors}</p>
               <p className="text-sm text-success-600 mt-1">+12 新進投資人</p>
             </div>
-          </div>
+          </div> */}
 
-          <div className="card border-orange-200 bg-orange-50">
+          {/* <div className="card border-orange-200 bg-orange-50">
             <div>
               <p className="text-sm text-orange-600">待處理操作</p>
               <p className="text-2xl font-bold text-orange-700 mt-1">{metrics.pendingActions}</p>
               <p className="text-sm text-orange-600 mt-1">策略變更冷卻中</p>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Performance Charts Section */}
