@@ -1,5 +1,5 @@
 // 測試 FundDetails 組件的數據載入和投資功能
-const baseUrl = 'http://localhost:3000/api';
+const baseUrl = 'http://localhost:3304/api';
 
 async function testFundDetails() {
   console.log('🧪 測試 FundDetails 功能...\n');

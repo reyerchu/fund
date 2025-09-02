@@ -43,7 +43,15 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
   const [tradeType, setTradeType] = useState('buy'); // 'buy' or 'sell'
   const [isTrading, setIsTrading] = useState(false);
 
-  const [historicalPrices, setHistoricalPrices] = useState<{ blockNumber: number, sharePrice: number }[]>([]);
+  const [historicalPrices, setHistoricalPrices] = useState<{ blockNumber: number, sharePrice: number }[]>(
+    [
+  { blockNumber: 10001, sharePrice: 1.02 },
+  { blockNumber: 10003, sharePrice: 1.04 },
+  { blockNumber: 10005, sharePrice: 1.10 },
+  { blockNumber: 10007, sharePrice: 1.13 },
+  { blockNumber: 10009, sharePrice: 1.14 },
+]
+  );
   const [realtimePrice, setRealtimePrice] = useState<number | null>(null);
 
   const [gavHistory, setGavHistory] = useState<{ blockNumber: number, gav: number }[]>([]);
@@ -59,19 +67,19 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
     asset => asset.address === fund?.denominationAsset
   ) || DENOMINATION_ASSETS[0];
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      if (fund?.comptrollerProxy) {
-        try {
-          const prices = await getHistoricalSharePrices(fund.comptrollerProxy, denominationAsset.decimals);
-          setHistoricalPrices(prices);
-        } catch (e) {
-          console.warn('歷史價格查詢失敗', e);
-        }
-      }
-    };
-    loadHistory();
-  }, [fund]);
+  // useEffect(() => {
+  //   const loadHistory = async () => {
+  //     if (fund?.comptrollerProxy) {
+  //       try {
+  //         const prices = await getHistoricalSharePrices(fund.comptrollerProxy, denominationAsset.decimals);
+  //         setHistoricalPrices(prices);
+  //       } catch (e) {
+  //         console.warn('歷史價格查詢失敗', e);
+  //       }
+  //     }
+  //   };
+  //   loadHistory();
+  // }, [fund]);
 
   useEffect(() => {
     const loadRealtime = async () => {
@@ -113,19 +121,19 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
   }, [fund, historicalPrices]);
 
   // 查詢即時 GAV
-  useEffect(() => {
-    const loadRealtimeGAV = async () => {
-      if (fund?.vaultProxy) {
-        try {
-          const gav = await getVaultGAV(fund.vaultProxy);
-          setRealtimeGAV(Number(ethers.formatUnits(gav, denominationAsset.decimals || 18)));
-        } catch (e) {
-          console.warn('即時 GAV 查詢失敗', e);
-        }
-      }
-    };
-    loadRealtimeGAV();
-  }, [fund]);
+  // useEffect(() => {
+  //   const loadRealtimeGAV = async () => {
+  //     if (fund?.vaultProxy) {
+  //       try {
+  //         const gav = await getVaultGAV(fund.vaultProxy);
+  //         setRealtimeGAV(Number(ethers.formatUnits(gav, denominationAsset.decimals || 18)));
+  //       } catch (e) {
+  //         console.warn('即時 GAV 查詢失敗', e);
+  //       }
+  //     }
+  //   };
+  //   loadRealtimeGAV();
+  // }, [fund]);
 
   useEffect(() => {
     const loadWethHistoricalPrice = async () => {
@@ -473,6 +481,8 @@ export default function ManagerFundDetails({ fundId }: ManagerFundDetailsProps) 
 
   const totalAssetsUSD = wethUsdPrice !== null ? totalAssets * wethUsdPrice : null;
 
+  console.log("gavHistory:", gavHistory);
+  console.log("wethUsdHisPrice:", wethUsdHisPrice);
   const aumUsdHistory = gavHistory.map((g, i) => {
     const wethUsdHisArr = wethUsdHisPrice ?? [];
     return {

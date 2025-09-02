@@ -80,7 +80,7 @@ npm run dev
 ```
 
 4. **打開應用**
-   - 打開 http://localhost:3000
+   - 打開 http://localhost:3304
    - 連接 MetaMask 錢包
    - 切換到 Sepolia 測試網
 

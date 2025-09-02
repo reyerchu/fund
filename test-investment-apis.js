@@ -3,7 +3,7 @@
 // 測試投資記錄 API 的完整功能
 const axios = require('axios');
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:3304/api';
 
 async function testInvestmentAPIs() {
   console.log('🧪 測試投資記錄 API...\n');

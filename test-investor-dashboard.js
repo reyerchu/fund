@@ -1,5 +1,5 @@
 // 測試投資人儀表板API功能
-const baseUrl = 'http://localhost:3000/api';
+const baseUrl = 'http://localhost:3304/api';
 
 // 測試用戶地址
 const testInvestor = '0x1cF1fb97E6A4AfaA4167FA19d52AD19D6689C677';

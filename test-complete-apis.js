@@ -1,5 +1,5 @@
 // 完整 API 測試腳本
-const baseUrl = 'http://localhost:3000/api';
+const baseUrl = 'http://localhost:3304/api';
 
 // 模擬數據
 const testFundData = {

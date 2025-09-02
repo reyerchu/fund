@@ -51,5 +51,5 @@ export async function getVaultGAV(vaultProxyAddress: string) {
 
   console.log("Vault GAV:", ethers.formatUnits(gav, 18)); // 假設 GAV 是以 18 decimals 計算
   // GAV 單位是 denomination asset 的最小單位（如 18 decimals）
-  return gav;
+  return ethers.formatUnits(gav, 18);
 }

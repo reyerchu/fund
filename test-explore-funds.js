@@ -1,5 +1,5 @@
 // 測試 ExploreFunds 組件的數據載入功能
-const baseUrl = 'http://localhost:3000/api';
+const baseUrl = 'http://localhost:3304/api';
 
 async function testExploreFunds() {
   console.log('🧪 測試 ExploreFunds 數據載入...\n');

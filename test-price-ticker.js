@@ -4,7 +4,7 @@
 console.log('📊 即時報價組件資料庫整合測試\n');
 console.log('============================\n');
 
-const baseUrl = 'http://localhost:3000/api';
+const baseUrl = 'http://localhost:3304/api';
 
 async function testPriceTickerData() {
   console.log('🧪 測試即時報價資料源...\n');
