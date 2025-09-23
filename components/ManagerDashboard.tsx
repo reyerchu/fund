@@ -16,21 +16,21 @@ interface ManagedFund {
   name: string;
   symbol: string;
   address: string; // vaultProxy 地址
-  // NOTE: totalAssets is stored/displayed as a formatted string in DB; for calculations use numericAUM
-  totalAssets: string; // formatted display, e.g. "$1,234"
-  sharePrice: string; // formatted NAV/share string, e.g. "$1.0000"
-  performance: string; // formatted pct string
+  // NOTE: totalAssets 是顯示用字串；實際計算請用 __numeric
+  totalAssets: string; // e.g. "$1,234"
+  sharePrice: string; // e.g. "$1.0000"
+  performance: string; // e.g. "+0.00%"
   performanceColor: string;
   investors: number;
   lastUpdated: number;
 
-  // New: normalized numeric fields for accurate math (not persisted)
+  // 正規化數值（不存 DB）
   __numeric?: {
-    navPerShare?: number; // in denomination units
-    totalShares?: number; // raw number of shares
-    aum?: number; // navPerShare * totalShares (denomination units)
-    aumUSD?: number; // optional, if your perf service provides USD conversion
-    pct24h?: number; // priceChangePercentage24h
+    navPerShare?: number;
+    totalShares?: number;
+    aum?: number;
+    aumUSD?: number;
+    pct24h?: number;
   };
 
   comptrollerProxy?: string;
@@ -38,6 +38,45 @@ interface ManagedFund {
   creator?: string;
   txHash?: string;
   status?: string;
+}
+
+/** 小工具：正數判斷 */
+const isPos = (n: number) => Number.isFinite(n) && n > 0;
+
+/** 由投資紀錄推算 AUM/NAV/總份額；fallbackSharePriceStr 供無歷史價時退回 */
+async function aumFromHistory(
+  fundId: string,
+  fallbackSharePriceStr?: string
+): Promise<
+  | {
+      totalShares: number;
+      latestSharePrice: number;
+      aum: number;
+    }
+  | undefined
+> {
+  try {
+    const records = await fundDatabaseService.getFundInvestmentHistory(fundId);
+
+    // 已發行份額
+    const totalShares = records.reduce((sum: number, r: any) => {
+      const s = parseFloat(r.shares);
+      return r.type === "deposit" ? sum + s : sum - s;
+    }, 0);
+
+    // 取最後一筆 > 0 的 sharePrice，否則退回 DB 的 sharePrice，再不行就 1
+    const lastPositive = (() => {
+      const ps = records.map((r: any) => parseFloat(r.sharePrice)).filter(isPos);
+      if (ps.length) return ps[ps.length - 1];
+      const fsp = parseFloat(fallbackSharePriceStr ?? "NaN");
+      return isPos(fsp) ? fsp : 1;
+    })();
+
+    const aum = totalShares * lastPositive;
+    return { totalShares, latestSharePrice: lastPositive, aum };
+  } catch {
+    return undefined;
+  }
 }
 
 export default function ManagerDashboard() {
@@ -49,13 +88,21 @@ export default function ManagerDashboard() {
   >(new Map());
   const [selectedFund, setSelectedFund] = useState<string | null>(null);
 
+  // 先載入資料
   useEffect(() => {
     if (isConnected && walletAddress) {
       loadFundData();
-      const cleanup = setupRealTimeUpdates();
-      return cleanup;
     }
   }, [isConnected, walletAddress]);
+
+  // funds 準備好之後再訂閱即時更新
+  useEffect(() => {
+    if (!funds.length) return;
+    const addresses = funds.map((f) => f.address).filter(Boolean);
+    const cleanup = setupRealTimeUpdates(addresses);
+    return cleanup;
+    // 以地址列表字串當依賴，避免每次 re-render 重綁
+  }, [funds.map((f) => f.address).join("|")]);
 
   const loadFundData = async () => {
     setIsLoading(true);
@@ -63,6 +110,7 @@ export default function ManagerDashboard() {
       const fundDataList = await fundDatabaseService.getFundsByCreator(
         walletAddress!
       );
+
       const managedFunds = fundDataList.map(
         (fund: FundData): ManagedFund => ({
           id: fund.id,
@@ -82,7 +130,30 @@ export default function ManagerDashboard() {
           status: fund.status,
         })
       );
-      setFunds(managedFunds);
+
+      // 用投資紀錄回填每支基金的 AUM/NAV/份額（與詳情頁一致）
+      const enriched = await Promise.all(
+        managedFunds.map(async (f) => {
+          const hist = await aumFromHistory(
+            f.id,
+            f.sharePrice?.replace("$", "")
+          );
+          if (!hist || !isPos(hist.aum)) return f;
+
+          return {
+            ...f,
+            totalAssets: `$${Math.round(hist.aum).toLocaleString()}`,
+            sharePrice: `$${Number(hist.latestSharePrice).toFixed(6)}`,
+            __numeric: {
+              navPerShare: hist.latestSharePrice,
+              totalShares: hist.totalShares,
+              aum: hist.aum,
+            },
+          };
+        })
+      );
+
+      setFunds(enriched);
     } catch (error) {
       console.error("Error loading fund data:", error);
       setFunds([]);
@@ -91,8 +162,8 @@ export default function ManagerDashboard() {
     }
   };
 
-  const setupRealTimeUpdates = () => {
-    const fundAddresses = funds.map((f) => f.address);
+  /** 接受地址清單的訂閱流程（等 funds 準備好後呼叫） */
+  const setupRealTimeUpdates = (fundAddresses: string[]) => {
     const cleanup = performanceService.startRealTimeUpdates((updates) => {
       setRealTimeUpdates(new Map(updates));
       setFunds((currentFunds) =>
@@ -100,8 +171,8 @@ export default function ManagerDashboard() {
           const u = updates.get(fund.address);
           if (!u) return fund;
 
-          // Normalize numeric values to compute AUM correctly
-          const navPerShare = Number(u.sharePrice); // denomination units per share
+          // 正規化數值
+          const navPerShare = Number(u.sharePrice);
           const totalShares = Number(u.totalShares || 0);
           const aum = isFinite(navPerShare * totalShares)
             ? navPerShare * totalShares
@@ -121,6 +192,7 @@ export default function ManagerDashboard() {
               : fund.totalAssets,
             lastUpdated: Date.now(),
             __numeric: {
+              ...(fund.__numeric ?? {}),
               navPerShare,
               totalShares,
               aum,
@@ -133,7 +205,7 @@ export default function ManagerDashboard() {
     return cleanup;
   };
 
-  // Calculate portfolio-wide metrics using normalized numeric AUM
+  // Portfolio 指標：優先使用 __numeric.aum，退回已格式化字串的數值
   const metrics = useMemo(() => {
     const aums = funds.map((f) => {
       const parsed = parseFloat(
@@ -144,8 +216,7 @@ export default function ManagerDashboard() {
     });
     const totalAUMNow = aums.reduce((a, b) => a + (isFinite(b) ? b : 0), 0);
 
-    // Reconstruct yesterday's NAV per share using pct24h; assume shares roughly constant intra-day
-    // prevNAV = nav / (1 + pct)
+    // 估算 24h 前總 AUM（以 NAV 變化近似、份額近一天不變）
     let prevTotal = 0;
     funds.forEach((f) => {
       const nav = f.__numeric?.navPerShare;
@@ -155,13 +226,11 @@ export default function ManagerDashboard() {
         const prevNav = pct !== undefined ? nav / (1 + pct / 100) : nav;
         prevTotal += prevNav * shares;
       } else {
-        // fallback to formatted totalAssets if available
         const a =
           parseFloat(String(f.totalAssets).replace(/[^0-9.\-]/g, "")) || 0;
         prevTotal += a;
       }
     });
-
     const pctChange =
       prevTotal > 0 ? ((totalAUMNow - prevTotal) / prevTotal) * 100 : 0;
 
@@ -339,7 +408,7 @@ export default function ManagerDashboard() {
                 {funds.map((fund) => {
                   const isUpdating = realTimeUpdates.has(fund.address);
                   const timeSinceUpdate = Date.now() - fund.lastUpdated;
-                  const isRecent = timeSinceUpdate < 60000; // Less than 1 minute
+                  const isRecent = timeSinceUpdate < 60000; // < 1 min
                   return (
                     <tr key={fund.id} className="border-b border-gray-100">
                       <td className="py-4 px-4">

@@ -211,6 +211,21 @@
       "createdAt": "2025-09-14T08:19:04.807Z",
       "updatedAt": "2025-09-14T08:19:04.807Z",
       "status": "active"
+    },
+    {
+      "fundName": "JeffFUnd",
+      "fundSymbol": "JF01",
+      "vaultProxy": "0xDa6A026B68bbC53Dd87BCB51e3822C53409fc3E8",
+      "comptrollerProxy": "0xF763B9599666225397a4Cfc0b93b4f0E6C1E7460",
+      "denominationAsset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "managementFee": 2,
+      "performanceFee": 10,
+      "creator": "0x419de5908691c84118d31b5d4c5f6276803944f0",
+      "txHash": "0x936e5589f5b056eaaef110c6a58ca69d953946331971a9740e1124e4a4d5fcae",
+      "id": "16",
+      "createdAt": "2025-09-23T13:03:30.412Z",
+      "updatedAt": "2025-09-23T13:03:30.412Z",
+      "status": "active"
     }
   ],
   "investments": [
@@ -787,8 +802,22 @@
       "txHash": "0xc81fefdf1ff0ef06cc792a0b1f99bc06a20d3e0df50f1a861656a2d465f2c140",
       "timestamp": "2025-09-14T08:23:16.360Z",
       "status": "completed"
+    },
+    {
+      "id": "43",
+      "fundId": "16",
+      "fundName": "JeffFUnd",
+      "fundSymbol": "JF01",
+      "investorAddress": "0x419de5908691c84118d31b5d4c5f6276803944f0",
+      "type": "deposit",
+      "amount": "5",
+      "shares": "5",
+      "sharePrice": "1.000000",
+      "txHash": "0x7ce45984cb99d0698308cf1321b59f2bcb4d5e8b9a7b8d9b6fe2a581048ed4c2",
+      "timestamp": "2025-09-23T13:04:38.646Z",
+      "status": "completed"
     }
   ],
-  "lastFundId": 15,
-  "lastInvestmentId": 42
+  "lastFundId": 16,
+  "lastInvestmentId": 43
 }
