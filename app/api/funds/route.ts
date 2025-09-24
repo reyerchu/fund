@@ -13,21 +13,52 @@ export async function GET(request: NextRequest) {
 
     if (vaultAddress) {
       const fund = database.getFundByVaultAddress(vaultAddress);
-      return NextResponse.json({ success: true, data: fund });
+      // 舊資料補上 entranceFee 欄位
+      return NextResponse.json({
+        success: true,
+        data: fund
+          ? {
+              ...fund,
+              entranceFeePercent: fund.entranceFeePercent ?? 0,
+              entranceFeeRecipient: fund.entranceFeeRecipient ?? '',
+            }
+          : null,
+      });
     }
 
     if (creator) {
       const funds = database.getFundsByCreator(creator);
-      return NextResponse.json({ success: true, data: funds });
+      return NextResponse.json({
+        success: true,
+        data: funds.map((f: any) => ({
+          ...f,
+          entranceFeePercent: f.entranceFeePercent ?? 0,
+          entranceFeeRecipient: f.entranceFeeRecipient ?? '',
+        })),
+      });
     }
 
     if (query) {
       const funds = database.searchFunds(query);
-      return NextResponse.json({ success: true, data: funds });
+      return NextResponse.json({
+        success: true,
+        data: funds.map((f: any) => ({
+          ...f,
+          entranceFeePercent: f.entranceFeePercent ?? 0,
+          entranceFeeRecipient: f.entranceFeeRecipient ?? '',
+        })),
+      });
     }
 
     const funds = database.getAllFunds();
-    return NextResponse.json({ success: true, data: funds });
+    return NextResponse.json({
+      success: true,
+      data: funds.map((f: any) => ({
+        ...f,
+        entranceFeePercent: f.entranceFeePercent ?? 0,
+        entranceFeeRecipient: f.entranceFeeRecipient ?? '',
+      })),
+    });
   } catch (error: any) {
     console.error('API Error:', error);
     return NextResponse.json(
@@ -47,10 +78,10 @@ export async function POST(request: NextRequest) {
       vaultProxy,
       comptrollerProxy,
       denominationAsset,
-      managementFee,
-      performanceFee,
       creator,
-      txHash
+      txHash,
+      entranceFeePercent,
+      entranceFeeRecipient,
     } = body;
 
     // 驗證必要欄位
@@ -68,10 +99,13 @@ export async function POST(request: NextRequest) {
       vaultProxy,
       comptrollerProxy,
       denominationAsset,
-      managementFee,
-      performanceFee,
       creator,
-      txHash
+      txHash,
+      // ★ 新增：保存 entranceFee
+      entranceFeePercent: Number.isFinite(Number(entranceFeePercent))
+        ? Number(entranceFeePercent)
+        : 0,
+      entranceFeeRecipient: entranceFeeRecipient ?? '',
     });
 
     return NextResponse.json({ success: true, data: fund }, { status: 201 });

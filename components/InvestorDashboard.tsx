@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAccount } from '../lib/web3-context';
-import { fundDatabaseService, FundData, UserInvestmentSummary } from '../lib/fund-database-service';
-import { DENOMINATION_ASSETS, ERC20_ABI, formatTokenAmount, VAULT_PROXY_ABI } from '../lib/contracts';
+import { fundDatabaseService, FundData } from '../lib/fund-database-service';
+import { DENOMINATION_ASSETS, ERC20_ABI, VAULT_PROXY_ABI } from '../lib/contracts';
 import LoadingSpinner from './ui/LoadingSpinner';
 import { ethers } from 'ethers';
 import { FundService } from '@/lib/fund-service';
@@ -46,12 +46,11 @@ export default function InvestorDashboard() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  
+
   useEffect(() => {
     if (isConnected && address) {
       loadPortfolioData();
     } else {
-      // Reset data when wallet disconnected
       setPortfolio([]);
       setPortfolioSummary({
         totalValue: '0',
@@ -63,108 +62,60 @@ export default function InvestorDashboard() {
     }
   }, [isConnected, address]);
 
-  // useEffect(() => {
-  //   if (portfolio.length > 0) {
-  //     const summary = calculatePortfolioSummary(portfolio);
-  //     setPortfolioSummary(summary);
-  //   }
-  // }, [portfolio]);
-
-  // const calculatePortfolioSummary = (portfolioData: PortfolioItem[]): PortfolioSummary => {
-  //   let totalValue = 0;
-  //   let totalDeposited = 0;
-  //   let totalRedeemed = 0;
-  //   let bestPerformer: { symbol: string; performance: string } | undefined;
-  //   let bestPerformanceValue = -Infinity;
-
-  //   portfolioData.forEach(item => {
-  //     // 計算實際淨投入：總投入 - 總贖回
-  //     const itemDeposited = parseFloat(item.totalDeposited);
-  //     const itemRedeemed = parseFloat(item.totalRedeemed);
-  //     const netInvestment = itemDeposited - itemRedeemed;
-      
-  //     totalValue += parseFloat(item.currentValue);
-  //     totalDeposited += itemDeposited;
-  //     totalRedeemed += itemRedeemed;
-      
-  //     const returnPercentage = parseFloat(item.returnPercentage);
-  //     if (returnPercentage > bestPerformanceValue) {
-  //       bestPerformanceValue = returnPercentage;
-  //       bestPerformer = {
-  //         symbol: item.fundSymbol,
-  //         performance: `${returnPercentage >= 0 ? '+' : ''}${returnPercentage.toFixed(2)}%`
-  //       };
-  //     }
-  //   });
-
-  //   // 計算總收益：當前價值 - (總投入 - 總贖回)
-  //   const netInvestment = totalDeposited - totalRedeemed;
-  //   const totalReturn = totalValue - netInvestment;
-  //   const returnPercentage = netInvestment > 0 ? (totalReturn / netInvestment) * 100 : 0;
-
-  //   return {
-  //     totalValue: totalValue.toFixed(2),
-  //     totalDeposited: netInvestment.toFixed(2), // 顯示淨投入
-  //     totalReturn: totalReturn.toFixed(2),
-  //     returnPercentage: returnPercentage.toFixed(2),
-  //     totalFunds: portfolioData.length,
-  //     bestPerformer
-  //   };
-  // };
-
   const loadPortfolioData = async () => {
     if (!address) return;
-    
+
     setIsLoading(true);
     try {
       // 1. 獲取所有基金
       const allFunds = await fundDatabaseService.getAllFunds();
 
-      console.log('All Funds:', allFunds);
-      
       if (allFunds.length === 0) {
         setPortfolio([]);
+        setPortfolioSummary(prev => ({ ...prev, totalFunds: 0 }));
         setLastUpdated(new Date());
         return;
       }
 
-      // 2. 為每個基金獲取用戶的投資總結
+      // 2. 查詢每個基金的投資資料
       const portfolioPromises = allFunds.map(async (fund) => {
         try {
-            if (!window.ethereum) {
-              alert('請先連接您的錢包');
-              return {...fund};
-            }
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const fundService = new FundService(provider);
+          if (!window.ethereum) {
+            alert('請先連接您的錢包');
+            return { ...fund };
+          }
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const fundService = new FundService(provider);
 
+          const vault = new ethers.Contract(fund.vaultProxy, VAULT_PROXY_ABI, provider);
+          const underlying = new ethers.Contract(fund.denominationAsset, ERC20_ABI, provider);
 
-            const vault = new ethers.Contract(fund.vaultProxy, VAULT_PROXY_ABI, provider);
-            const underlying = new ethers.Contract(fund.denominationAsset, ERC20_ABI, provider);
-            
-            const decimals = getDenominationAsset(fund.denominationAsset).decimals;
-            const totalSupplyRaw = await vault.totalSupply();
-            const totalSupply = ethers.formatUnits(totalSupplyRaw, 18);
-            const vaultBalanceRaw = await underlying.balanceOf(fund.vaultProxy);
-            const vaultBalance = ethers.formatUnits(vaultBalanceRaw, decimals);
+          const decimals = getDenominationAsset(fund.denominationAsset).decimals;
+          const totalSupplyRaw = await vault.totalSupply();
+          const totalSupply = ethers.formatUnits(totalSupplyRaw, 18);
+          const vaultBalanceRaw = await underlying.balanceOf(fund.vaultProxy);
+          const vaultBalance = ethers.formatUnits(vaultBalanceRaw, decimals);
 
-            const userShares = await fundService.getUserBalance(fund.vaultProxy, address);
+          const userShares = await fundService.getUserBalance(fund.vaultProxy, address);
 
-            const sharePrice =
-              parseFloat(totalSupply) > 0
-                ? (parseFloat(vaultBalance) / parseFloat(totalSupply)).toFixed(6)
-                : "1.000000";
-                
-            return {
-              fundId: fund.id,
-              fundName: fund.fundName,
-              fundSymbol: fund.fundSymbol,
-              vaultProxy: fund.vaultProxy,
-              denominationAsset: fund.denominationAsset,
-              currentShares: userShares,
-              currentValue: vaultBalance,
-              sharePrice
-            } as PortfolioItem;
+          const sharePrice =
+            parseFloat(totalSupply) > 0
+              ? (parseFloat(vaultBalance) / parseFloat(totalSupply)).toFixed(6)
+              : "1.000000";
+
+          // ✅ 個人持有價值
+          const currentValue = (parseFloat(userShares) * parseFloat(sharePrice)).toFixed(6);
+
+          return {
+            fundId: fund.id,
+            fundName: fund.fundName,
+            fundSymbol: fund.fundSymbol,
+            vaultProxy: fund.vaultProxy,
+            denominationAsset: fund.denominationAsset,
+            currentShares: userShares,
+            currentValue,
+            sharePrice
+          } as PortfolioItem;
         } catch (error) {
           console.warn(`Failed to get investment summary for fund ${fund.id}:`, error);
           return null;
@@ -181,8 +132,14 @@ export default function InvestorDashboard() {
       );
 
       setPortfolio(validPortfolio);
+
+      // ✅ 更新「持有基金數量」
+      setPortfolioSummary(prev => ({
+        ...prev,
+        totalFunds: validPortfolio.length
+      }));
+
       setLastUpdated(new Date());
-      
     } catch (error) {
       console.error('Error loading portfolio:', error);
     } finally {
@@ -230,48 +187,6 @@ export default function InvestorDashboard() {
 
         {/* Portfolio Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {/* <div className="card">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-600">當前投資價值</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">${portfolioSummary.totalValue}</p>
-              </div>
-              <div className="text-2xl">📈</div>
-            </div>
-          </div> */}
-
-          {/* <div className="card">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-600">淨投入金額</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">${portfolioSummary.totalDeposited}</p>
-                <p className="text-xs text-gray-500 mt-1">投入 - 贖回</p>
-              </div>
-              <div className="text-2xl">�</div>
-            </div>
-          </div> */}
-
-          {/* <div className="card">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-600">總收益</p>
-                <p className={`text-2xl font-bold mt-1 ${
-                  parseFloat(portfolioSummary.returnPercentage) >= 0 ? 'text-success-600' : 'text-danger-600'
-                }`}>
-                  {parseFloat(portfolioSummary.returnPercentage) >= 0 ? '+' : ''}${portfolioSummary.totalReturn}
-                </p>
-                <p className={`text-sm mt-1 ${
-                  parseFloat(portfolioSummary.returnPercentage) >= 0 ? 'text-success-600' : 'text-danger-600'
-                }`}>
-                  ({portfolioSummary.returnPercentage}%)
-                </p>
-              </div>
-              <div className="text-2xl">
-                {parseFloat(portfolioSummary.returnPercentage) >= 0 ? '📊' : '�'}
-              </div>
-            </div>
-          </div> */}
-
           <div className="card">
             <div className="flex justify-between items-start">
               <div>

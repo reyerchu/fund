@@ -23,8 +23,8 @@ export default function CreateFundForm() {
     fundName: "",
     fundSymbol: "",
     denominationAsset: DENOMINATION_ASSETS[0].address,
-    managementFee: '2',
-    performanceFee: '10',
+    // managementFee: '2',
+    // performanceFee: '10',
     enableWhitelist: false,
     whitelist: [],
 
@@ -94,8 +94,8 @@ export default function CreateFundForm() {
         fundName: formData.fundName,
         fundSymbol: formData.fundSymbol,
         denominationAsset: formData.denominationAsset,
-        managementFee: parseFloat(formData.managementFee),
-        performanceFee: parseFloat(formData.performanceFee),
+        // managementFee: parseFloat(formData.managementFee),
+        // performanceFee: parseFloat(formData.performanceFee),
         enableWhitelist,
         whitelist: enableWhitelist ? parsedWhitelist : [],
         entranceFeeBps,
@@ -109,10 +109,12 @@ export default function CreateFundForm() {
         vaultProxy: result.vaultProxy,
         comptrollerProxy: result.comptrollerProxy,
         denominationAsset: formData.denominationAsset,
-        managementFee: parseFloat(formData.managementFee),
-        performanceFee: parseFloat(formData.performanceFee),
+        // managementFee: parseFloat(formData.managementFee),
+        // performanceFee: parseFloat(formData.performanceFee),
         creator: address!,
         txHash: result.txHash,
+        entranceFeePercent: parseFloat(formData.entranceFeePercent || "0"),
+        entranceFeeRecipient,
       });
 
       console.log("💾 基金已保存到資料庫:", fundRecord);
@@ -140,8 +142,8 @@ export default function CreateFundForm() {
         fundName: "",
         fundSymbol: "",
         denominationAsset: DENOMINATION_ASSETS[0].address,
-        managementFee: '2',
-        performanceFee: '10',
+        // managementFee: '2',
+        // performanceFee: '10',
         enableWhitelist: false,
         whitelist: [],
         entranceFeePercent: "1", // 以「百分比」輸入，例：1 代表 1%
@@ -163,8 +165,8 @@ export default function CreateFundForm() {
       fundName: "",
       fundSymbol: "",
       denominationAsset: DENOMINATION_ASSETS[0].address,
-      managementFee: '2',
-      performanceFee: '10',
+      //   managementFee: '2',
+      //   performanceFee: '10',
       enableWhitelist: false,
       whitelist: [],
       entranceFeePercent: "1", // 以「百分比」輸入，例：1 代表 1%
@@ -382,7 +384,9 @@ export default function CreateFundForm() {
         return (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">費用與白名單</h2>
-            <p className="text-gray-600">設定申購費（Entrance Fee）與可申購的白名單。</p>
+            <p className="text-gray-600">
+              設定申購費（Entrance Fee）與可申購的白名單。
+            </p>
 
             {/* 申購費（Entrance Fee） */}
             <div className="border-t pt-6">
@@ -610,12 +614,13 @@ export default function CreateFundForm() {
                 className="flex flex-col items-center relative"
               >
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${step.active
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                    step.active
                       ? "bg-success-500 text-white"
                       : currentStep > step.number
-                        ? "bg-success-200 text-success-700"
-                        : "bg-gray-200 text-gray-400"
-                    }`}
+                      ? "bg-success-200 text-success-700"
+                      : "bg-gray-200 text-gray-400"
+                  }`}
                 >
                   {currentStep > step.number ? (
                     <svg
@@ -634,8 +639,9 @@ export default function CreateFundForm() {
                   )}
                 </div>
                 <p
-                  className={`text-xs mt-2 text-center max-w-20 ${step.active ? "text-success-600" : "text-gray-500"
-                    }`}
+                  className={`text-xs mt-2 text-center max-w-20 ${
+                    step.active ? "text-success-600" : "text-gray-500"
+                  }`}
                 >
                   {step.title}
                 </p>

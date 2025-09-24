@@ -74,13 +74,13 @@ export const POLICY_MANAGER_ABI = [
     'function getEnabledPoliciesForFund(address comptrollerProxy) view returns (address[])'
 ];
 
-export const MANAGEMENT_FEE_ABI = [
-    'function managementFeeRate() view returns (uint256)'
-];
+// export const MANAGEMENT_FEE_ABI = [
+//     'function managementFeeRate() view returns (uint256)'
+// ];
 
-export const PERFORMANCE_FEE_ABI = [
-    'function performanceFeeRateInBps() view returns (uint256)'
-];
+// export const PERFORMANCE_FEE_ABI = [
+//     'function performanceFeeRateInBps() view returns (uint256)'
+// ];
 
 export const ALLOWED_DEPOSIT_RECIPIENTS_POLICY_ABI = [
     'function getListIdsForFund(address comptrollerProxy) view returns (uint256[])'

@@ -8,8 +8,8 @@ import {
   COMPTROLLER_ABI,
   FEE_MANAGER_ABI,
   POLICY_MANAGER_ABI,
-  MANAGEMENT_FEE_ABI,
-  PERFORMANCE_FEE_ABI,
+//   MANAGEMENT_FEE_ABI,
+//   PERFORMANCE_FEE_ABI,
 } from "../lib/contracts";
 import { formatTokenAmount } from "../lib/contracts";
 import {
@@ -567,38 +567,13 @@ export default function ManagerFundDetails({
     );
 
     const feePromises = enabledFees.map(async (feeAddress: string) => {
-      let feeInfo = { name: "Unknown Fee", address: feeAddress, value: "N/A" };
-      try {
-        if (
-          feeAddress.toLowerCase() ===
-          "0x5c25D5d0C2cad652992bA417f8FA054F8930Ef99".toLowerCase()
-        ) {
-          const feeContract = new ethers.Contract(
-            feeAddress,
-            MANAGEMENT_FEE_ABI,
-            provider
-          );
-          const rate = await feeContract.managementFeeRate();
-          feeInfo.name = "Management Fee";
-          feeInfo.value = `${ethers.formatUnits(rate, 16)}% p.a.`; // rate is typically 1e16 for 1%
-        } else if (
-          feeAddress.toLowerCase() ===
-          "0x82EDeB07c051D6461acD30c39b5762D9523CEf1C".toLowerCase()
-        ) {
-          const feeContract = new ethers.Contract(
-            feeAddress,
-            PERFORMANCE_FEE_ABI,
-            provider
-          );
-          const rateBps = await feeContract.performanceFeeRateInBps();
-          feeInfo.name = "Performance Fee";
-          feeInfo.value = `${Number(rateBps) / 100}%`; // rate is in basis points (1% = 100bps)
-        }
-      } catch (e) {
-        console.error(`Error fetching details for fee ${feeAddress}:`, e);
-      }
-      return feeInfo;
-    });
+  return {
+    name: "Entrance Fee",
+    address: feeAddress,
+    value: `${Number(fund?.entranceFeePercent ?? 0)}%`,
+  };
+});
+
 
     const policyPromises = enabledPolicies.map(
       async (policyAddress: string) => {
@@ -1528,7 +1503,7 @@ export default function ManagerFundDetails({
                 </div>
               </div>
             </div>
-            <button
+            {/* <button
               className="w-full py-2 px-4 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white mt-4"
               disabled={!provider || !fund?.comptrollerProxy}
               onClick={async () => {
@@ -1546,7 +1521,7 @@ export default function ManagerFundDetails({
               }}
             >
               結算績效費
-            </button>
+            </button> */}
             {/* Fund Statistics */}
             <div className="card">
               <h3 className="text-lg font-bold text-gray-900 mb-4">基金統計</h3>

@@ -1,6 +1,6 @@
 // 模擬資料庫服務 - 使用 JSON 檔案儲存基金資料
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 interface FundData {
   id: string;
@@ -9,17 +9,19 @@ interface FundData {
   vaultProxy: string;
   comptrollerProxy: string;
   denominationAsset: string;
-  managementFee: number;
-  performanceFee: number;
+  //   managementFee: number;
+  //   performanceFee: number;
   creator: string;
   txHash: string;
   createdAt: string;
   updatedAt: string;
-  status: 'active' | 'paused' | 'closed';
+  status: "active" | "paused" | "closed";
   totalAssets?: string;
   sharePrice?: string;
   totalShares?: string;
   totalInvestors?: number;
+  entranceFeePercent?: number; // 例如 1 代表 1%
+  entranceFeeRecipient?: string;
 }
 
 // 投資記錄介面
@@ -29,13 +31,13 @@ interface InvestmentRecord {
   fundName: string;
   fundSymbol: string;
   investorAddress: string;
-  type: 'deposit' | 'redeem';
+  type: "deposit" | "redeem";
   amount: string; // 投資/贖回的計價資產數量
   shares: string; // 獲得/贖回的份額數量
   sharePrice: string; // 當時的份額價格
   txHash: string;
   timestamp: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
 }
 
 // 用戶投資總結介面
@@ -62,10 +64,15 @@ interface Database {
 
 class MockDatabase {
   private dbPath: string;
-  private db: Database = { funds: [], investments: [], lastFundId: 0, lastInvestmentId: 0 };
+  private db: Database = {
+    funds: [],
+    investments: [],
+    lastFundId: 0,
+    lastInvestmentId: 0,
+  };
 
   constructor() {
-    this.dbPath = path.join(process.cwd(), 'data', 'funds.json');
+    this.dbPath = path.join(process.cwd(), "data", "funds.json");
     this.ensureDataDirectory();
     this.loadDatabase();
   }
@@ -80,14 +87,17 @@ class MockDatabase {
   private loadDatabase() {
     try {
       if (fs.existsSync(this.dbPath)) {
-        const data = fs.readFileSync(this.dbPath, 'utf8');
+        const data = fs.readFileSync(this.dbPath, "utf8");
         this.db = JSON.parse(data);
-        
+
         // 確保新版本的資料結構
         if (!this.db.investments) {
           this.db.investments = [];
         }
-        if ((this.db as any).lastId !== undefined && this.db.lastFundId === undefined) {
+        if (
+          (this.db as any).lastId !== undefined &&
+          this.db.lastFundId === undefined
+        ) {
           this.db.lastFundId = (this.db as any).lastId;
           delete (this.db as any).lastId;
         }
@@ -95,46 +105,59 @@ class MockDatabase {
           this.db.lastInvestmentId = 0;
         }
       } else {
-        this.db = { 
-          funds: [], 
+        this.db = {
+          funds: [],
           investments: [],
           lastFundId: 0,
-          lastInvestmentId: 0
+          lastInvestmentId: 0,
         };
         this.saveDatabase();
       }
     } catch (error) {
-      console.error('Error loading database:', error);
-      this.db = { 
-        funds: [], 
+      console.error("Error loading database:", error);
+      this.db = {
+        funds: [],
         investments: [],
         lastFundId: 0,
-        lastInvestmentId: 0
+        lastInvestmentId: 0,
       };
     }
   }
 
   private saveDatabase() {
     try {
-      fs.writeFileSync(this.dbPath, JSON.stringify(this.db, null, 2), 'utf8');
+      fs.writeFileSync(this.dbPath, JSON.stringify(this.db, null, 2), "utf8");
     } catch (error) {
-      console.error('Error saving database:', error);
+      console.error("Error saving database:", error);
     }
   }
 
+  private withEntranceDefaults<
+    T extends { entranceFeePercent?: number; entranceFeeRecipient?: string }
+  >(f: T): T {
+    return {
+      ...f,
+      entranceFeePercent: f.entranceFeePercent ?? 0,
+      entranceFeeRecipient: f.entranceFeeRecipient ?? "",
+    };
+  }
   // 創建新基金記錄
-  createFund(fundData: Omit<FundData, 'id' | 'createdAt' | 'updatedAt' | 'status'>): FundData {
+  createFund(
+    data: Omit<FundData, "status" | "id" | "createdAt" | "updatedAt">
+  ): FundData {
     const now = new Date().toISOString();
     const newId = (this.db.lastFundId + 1).toString();
-    
+
     const fund: FundData = {
-      ...fundData,
       id: newId,
+      status: "active",
       createdAt: now,
       updatedAt: now,
-      status: 'active'
+      ...data,
+      // 確保 fallback
+      entranceFeePercent: data.entranceFeePercent ?? 0,
+      entranceFeeRecipient: data.entranceFeeRecipient ?? "",
     };
-
     this.db.funds.push(fund);
     this.db.lastFundId += 1;
     this.saveDatabase();
@@ -144,31 +167,37 @@ class MockDatabase {
 
   // 獲取所有基金
   getAllFunds(): FundData[] {
-    return [...this.db.funds];
+    return this.db.funds.map((f) => this.withEntranceDefaults(f));
   }
 
   // 根據 ID 獲取基金
   getFundById(id: string): FundData | null {
-    return this.db.funds.find(fund => fund.id === id) || null;
+    const f = this.db.funds.find(fund => fund.id === id) || null;
+    return f ? this.withEntranceDefaults(f) : null;
   }
 
   // 根據 Vault Proxy 地址獲取基金
   getFundByVaultAddress(vaultProxy: string): FundData | null {
-    return this.db.funds.find(fund => fund.vaultProxy.toLowerCase() === vaultProxy.toLowerCase()) || null;
+    const f = this.db.funds.find(fund => fund.vaultProxy.toLowerCase() === vaultProxy.toLowerCase()) || null;
+    return f ? this.withEntranceDefaults(f) : null;
   }
 
   // 根據創建者獲取基金
   getFundsByCreator(creator: string): FundData[] {
-    return this.db.funds.filter(fund => fund.creator.toLowerCase() === creator.toLowerCase());
+    return this.db.funds
+      .filter(fund => fund.creator.toLowerCase() === creator.toLowerCase())
+      .map((f) => this.withEntranceDefaults(f));
   }
 
   // 搜尋基金
   searchFunds(query: string): FundData[] {
     const lowercaseQuery = query.toLowerCase();
-    return this.db.funds.filter(fund =>
-      fund.fundName.toLowerCase().includes(lowercaseQuery) ||
-      fund.fundSymbol.toLowerCase().includes(lowercaseQuery)
-    );
+    return this.db.funds
+      .filter(fund =>
+        fund.fundName.toLowerCase().includes(lowercaseQuery) ||
+        fund.fundSymbol.toLowerCase().includes(lowercaseQuery)
+      )
+      .map((f) => this.withEntranceDefaults(f));
   }
 
   // ========== 投資記錄相關方法 ==========
@@ -177,7 +206,7 @@ class MockDatabase {
   recordInvestment(data: {
     fundId: string;
     investorAddress: string;
-    type: 'deposit' | 'redeem';
+    type: "deposit" | "redeem";
     amount: string;
     shares: string;
     sharePrice: string;
@@ -185,11 +214,11 @@ class MockDatabase {
   }): InvestmentRecord {
     const now = new Date().toISOString();
     const newId = (this.db.lastInvestmentId + 1).toString();
-    
+
     // 獲取基金資訊
-    const fund = this.db.funds.find(f => f.id === data.fundId);
+    const fund = this.db.funds.find((f) => f.id === data.fundId);
     if (!fund) {
-      throw new Error('找不到指定的基金');
+      throw new Error("找不到指定的基金");
     }
 
     const investment: InvestmentRecord = {
@@ -204,7 +233,7 @@ class MockDatabase {
       sharePrice: data.sharePrice,
       txHash: data.txHash,
       timestamp: now,
-      status: 'completed'
+      status: "completed",
     };
 
     this.db.investments.push(investment);
@@ -217,29 +246,45 @@ class MockDatabase {
   // 獲取特定基金的所有投資記錄
   getFundInvestmentHistory(fundId: string): InvestmentRecord[] {
     return this.db.investments
-      .filter(investment => investment.fundId === fundId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      .filter((investment) => investment.fundId === fundId)
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
   }
 
   // 獲取用戶在特定基金的投資記錄
-  getUserFundInvestmentHistory(fundId: string, userAddress: string): InvestmentRecord[] {
+  getUserFundInvestmentHistory(
+    fundId: string,
+    userAddress: string
+  ): InvestmentRecord[] {
     return this.db.investments
-      .filter(investment => 
-        investment.fundId === fundId && 
-        investment.investorAddress.toLowerCase() === userAddress.toLowerCase()
+      .filter(
+        (investment) =>
+          investment.fundId === fundId &&
+          investment.investorAddress.toLowerCase() === userAddress.toLowerCase()
       )
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
   }
 
   // 獲取用戶投資總結
-  getUserInvestmentSummary(fundId: string, userAddress: string): UserInvestmentSummary | null {
-    const userInvestments = this.getUserFundInvestmentHistory(fundId, userAddress);
-    
+  getUserInvestmentSummary(
+    fundId: string,
+    userAddress: string
+  ): UserInvestmentSummary | null {
+    const userInvestments = this.getUserFundInvestmentHistory(
+      fundId,
+      userAddress
+    );
+
     if (userInvestments.length === 0) {
       return null;
     }
 
-    const fund = this.db.funds.find(f => f.id === fundId);
+    const fund = this.db.funds.find((f) => f.id === fundId);
     if (!fund) {
       return null;
     }
@@ -248,11 +293,11 @@ class MockDatabase {
     let totalRedeemed = 0;
     let currentShares = 0;
 
-    userInvestments.forEach(investment => {
+    userInvestments.forEach((investment) => {
       const amount = parseFloat(investment.amount);
       const shares = parseFloat(investment.shares);
-      
-      if (investment.type === 'deposit') {
+
+      if (investment.type === "deposit") {
         totalDeposited += amount;
         currentShares += shares;
       } else {
@@ -261,12 +306,15 @@ class MockDatabase {
       }
     });
 
-    const currentSharePrice = parseFloat(fund.sharePrice || '1');
+    const currentSharePrice = parseFloat(fund.sharePrice || "1");
     const currentValue = currentShares * currentSharePrice;
     const totalReturn = currentValue + totalRedeemed - totalDeposited;
-    const returnPercentage = totalDeposited > 0 ? (totalReturn / totalDeposited) * 100 : 0;
+    const returnPercentage =
+      totalDeposited > 0 ? (totalReturn / totalDeposited) * 100 : 0;
 
-    const timestamps = userInvestments.map(inv => new Date(inv.timestamp).getTime());
+    const timestamps = userInvestments.map((inv) =>
+      new Date(inv.timestamp).getTime()
+    );
     const firstInvestmentDate = new Date(Math.min(...timestamps)).toISOString();
     const lastTransactionDate = new Date(Math.max(...timestamps)).toISOString();
 
@@ -281,7 +329,7 @@ class MockDatabase {
       totalReturn: totalReturn.toFixed(2),
       returnPercentage: returnPercentage.toFixed(2),
       firstInvestmentDate,
-      lastTransactionDate
+      lastTransactionDate,
     };
   }
 }

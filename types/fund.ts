@@ -38,13 +38,13 @@ export interface CreateFundParams {
   fundName: string;
   fundSymbol: string;
   denominationAsset: string;
-  managementFee?: number;
-  performanceFee?: number;
+//   managementFee?: number;
+//   performanceFee?: number;
   whitelist?: string[];
   enableWhitelist?: boolean;
 
-  entranceFeeBps?: number;         // ¨Ò¡G1% ´N¶Ç 100
-  entranceFeeRecipient?: string;   // ¯dªÅ«h¹w³]¬° signer address
+  entranceFeeBps?: number;         // ï¿½Ò¡G1% ï¿½Nï¿½ï¿½ 100
+  entranceFeeRecipient?: string;   // ï¿½dï¿½Å«hï¿½wï¿½]ï¿½ï¿½ signer address
 }
 
 export interface FundMetrics {

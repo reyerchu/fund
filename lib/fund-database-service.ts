@@ -7,17 +7,19 @@ interface FundData {
   vaultProxy: string;
   comptrollerProxy: string;
   denominationAsset: string;
-  managementFee: number;
-  performanceFee: number;
+  //   managementFee: number;
+  //   performanceFee: number;
   creator: string;
   txHash: string;
   createdAt: string;
   updatedAt: string;
-  status: 'active' | 'paused' | 'closed';
+  status: "active" | "paused" | "closed";
   totalAssets?: string;
   sharePrice?: string;
   totalShares?: string;
   totalInvestors?: number;
+  entranceFeePercent?: number; // 例如 1 代表 1%
+  entranceFeeRecipient?: string;
 }
 
 interface CreateFundData {
@@ -26,10 +28,12 @@ interface CreateFundData {
   vaultProxy: string;
   comptrollerProxy: string;
   denominationAsset: string;
-  managementFee: number;
-  performanceFee: number;
+  //   managementFee: number;
+  //   performanceFee: number;
   creator: string;
   txHash: string;
+  entranceFeePercent?: number; // 例如 1 代表 1%
+  entranceFeeRecipient?: string;
 }
 
 // 新增：投資記錄介面
@@ -39,13 +43,13 @@ interface InvestmentRecord {
   fundName: string;
   fundSymbol: string;
   investorAddress: string;
-  type: 'deposit' | 'redeem';
+  type: "deposit" | "redeem";
   amount: string; // 投資/贖回的計價資產數量
   shares: string; // 獲得/贖回的份額數量
   sharePrice: string; // 當時的份額價格
   txHash: string;
   timestamp: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
 }
 
 // 新增：用戶投資總結介面
@@ -75,41 +79,55 @@ interface SwapRecord {
   txHash: string;
   initiator: string;
   timestamp: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
 }
 
 class FundDatabaseService {
-  private baseUrl = '/api/funds';
+  private baseUrl = "/api/funds";
 
   // 創建新基金記錄
   async createFund(fundData: CreateFundData): Promise<FundData> {
+    const payload: CreateFundData = {
+      ...fundData,
+      entranceFeePercent: fundData.entranceFeePercent ?? 0,
+      entranceFeeRecipient: fundData.entranceFeeRecipient ?? "",
+    };
+
     const response = await fetch(this.baseUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(fundData),
+      body: JSON.stringify(payload),
     });
 
     const result = await response.json();
-    
+
     if (!result.success) {
-      throw new Error(result.error || '創建基金記錄失敗');
+      throw new Error(result.error || "創建基金記錄失敗");
     }
 
-    return result.data;
+    return {
+      ...result.data,
+      entranceFeePercent: result.data.entranceFeePercent ?? 0,
+      entranceFeeRecipient: result.data.entranceFeeRecipient ?? "",
+    };
   }
 
   // 獲取所有基金
   async getAllFunds(): Promise<FundData[]> {
     const response = await fetch(this.baseUrl);
     const result = await response.json();
-    
     if (!result.success) {
-      throw new Error(result.error || '獲取基金列表失敗');
+      throw new Error(result.error || "獲取基金列表失敗");
     }
 
-    return result.data;
+    // fallback 避免舊資料沒有 entranceFeePercent
+    return result.data.map((f: FundData) => ({
+      ...f,
+      entranceFeePercent: f.entranceFeePercent ?? 0,
+      entranceFeeRecipient: f.entranceFeeRecipient ?? "",
+    }));
   }
 
   // 根據創建者獲取基金
@@ -117,12 +135,15 @@ class FundDatabaseService {
     const url = `${this.baseUrl}?creator=${encodeURIComponent(creator)}`;
     const response = await fetch(url);
     const result = await response.json();
-    
     if (!result.success) {
-      throw new Error(result.error || '獲取基金列表失敗');
+      throw new Error(result.error || "獲取基金列表失敗");
     }
 
-    return result.data;
+    return result.data.map((f: FundData) => ({
+      ...f,
+      entranceFeePercent: f.entranceFeePercent ?? 0,
+      entranceFeeRecipient: f.entranceFeeRecipient ?? "",
+    }));
   }
 
   // 根據 Vault 地址獲取基金
@@ -130,12 +151,17 @@ class FundDatabaseService {
     const url = `${this.baseUrl}?vault=${encodeURIComponent(vaultAddress)}`;
     const response = await fetch(url);
     const result = await response.json();
-    
     if (!result.success) {
-      throw new Error(result.error || '獲取基金詳情失敗');
+      throw new Error(result.error || "獲取基金詳情失敗");
     }
 
-    return result.data;
+    return result.data
+      ? {
+          ...result.data,
+          entranceFeePercent: result.data.entranceFeePercent ?? 0,
+          entranceFeeRecipient: result.data.entranceFeeRecipient ?? "",
+        }
+      : null;
   }
 
   // 搜尋基金
@@ -143,9 +169,9 @@ class FundDatabaseService {
     const url = `${this.baseUrl}?search=${encodeURIComponent(query)}`;
     const response = await fetch(url);
     const result = await response.json();
-    
+
     if (!result.success) {
-      throw new Error(result.error || '搜尋基金失敗');
+      throw new Error(result.error || "搜尋基金失敗");
     }
 
     return result.data;
@@ -157,24 +183,24 @@ class FundDatabaseService {
   async recordInvestment(data: {
     fundId: string;
     investorAddress: string;
-    type: 'deposit' | 'redeem';
+    type: "deposit" | "redeem";
     amount: string;
     shares: string;
     sharePrice: string;
     txHash: string;
   }): Promise<InvestmentRecord> {
     const response = await fetch(`${this.baseUrl}/investments`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
-    
+
     const result = await response.json();
-    
+
     if (!result.success) {
-      throw new Error(result.error || '記錄投資操作失敗');
+      throw new Error(result.error || "記錄投資操作失敗");
     }
 
     return result.data;
@@ -182,44 +208,58 @@ class FundDatabaseService {
 
   // 獲取特定基金的所有投資記錄
   async getFundInvestmentHistory(fundId: string): Promise<InvestmentRecord[]> {
-    const url = `${this.baseUrl}/investments?fundId=${encodeURIComponent(fundId)}`;
+    const url = `${this.baseUrl}/investments?fundId=${encodeURIComponent(
+      fundId
+    )}`;
     const response = await fetch(url);
     const result = await response.json();
-    
+
     if (!result.success) {
-      throw new Error(result.error || '獲取基金投資記錄失敗');
+      throw new Error(result.error || "獲取基金投資記錄失敗");
     }
 
     return result.data;
   }
 
   // 獲取用戶在特定基金的投資記錄
-  async getUserFundInvestmentHistory(fundId: string, userAddress: string): Promise<InvestmentRecord[]> {
-    const url = `${this.baseUrl}/investments?fundId=${encodeURIComponent(fundId)}&investor=${encodeURIComponent(userAddress)}`;
+  async getUserFundInvestmentHistory(
+    fundId: string,
+    userAddress: string
+  ): Promise<InvestmentRecord[]> {
+    const url = `${this.baseUrl}/investments?fundId=${encodeURIComponent(
+      fundId
+    )}&investor=${encodeURIComponent(userAddress)}`;
     const response = await fetch(url);
     const result = await response.json();
-    
+
     if (!result.success) {
-      throw new Error(result.error || '獲取用戶投資記錄失敗');
+      throw new Error(result.error || "獲取用戶投資記錄失敗");
     }
 
     return result.data;
   }
 
   // 獲取用戶投資總結
-  async getUserInvestmentSummary(fundId: string, userAddress: string): Promise<UserInvestmentSummary | null> {
-    const url = `${this.baseUrl}/investments/summary?fundId=${encodeURIComponent(fundId)}&investor=${encodeURIComponent(userAddress)}`;
+  async getUserInvestmentSummary(
+    fundId: string,
+    userAddress: string
+  ): Promise<UserInvestmentSummary | null> {
+    const url = `${
+      this.baseUrl
+    }/investments/summary?fundId=${encodeURIComponent(
+      fundId
+    )}&investor=${encodeURIComponent(userAddress)}`;
     const response = await fetch(url);
     const result = await response.json();
-    
+
     if (!result.success) {
-      throw new Error(result.error || '獲取投資總結失敗');
+      throw new Error(result.error || "獲取投資總結失敗");
     }
 
     return result.data;
   }
 
-  // ========== Swap 記錄相關方法 ========== 
+  // ========== Swap 記錄相關方法 ==========
 
   // 記錄 swap 操作
   async recordSwap(data: {
@@ -231,18 +271,18 @@ class FundDatabaseService {
     toAmount: string;
     txHash: string;
     initiator: string;
-    status?: 'pending' | 'completed' | 'failed';
+    status?: "pending" | "completed" | "failed";
   }): Promise<SwapRecord> {
     const response = await fetch(`${this.baseUrl}/swaps`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
     const result = await response.json();
     if (!result.success) {
-      throw new Error(result.error || '記錄 swap 操作失敗');
+      throw new Error(result.error || "記錄 swap 操作失敗");
     }
     return result.data;
   }
@@ -253,18 +293,20 @@ class FundDatabaseService {
     const response = await fetch(url);
     const result = await response.json();
     if (!result.success) {
-      throw new Error(result.error || '獲取 swap 記錄失敗');
+      throw new Error(result.error || "獲取 swap 記錄失敗");
     }
     return result.data;
   }
 
   // 取得用戶的所有 swap 記錄
   async getUserSwapHistory(initiator: string): Promise<SwapRecord[]> {
-    const url = `${this.baseUrl}/swaps?initiator=${encodeURIComponent(initiator)}`;
+    const url = `${this.baseUrl}/swaps?initiator=${encodeURIComponent(
+      initiator
+    )}`;
     const response = await fetch(url);
     const result = await response.json();
     if (!result.success) {
-      throw new Error(result.error || '獲取 swap 記錄失敗');
+      throw new Error(result.error || "獲取 swap 記錄失敗");
     }
     return result.data;
   }
@@ -283,7 +325,7 @@ class FundDatabaseService {
   }> {
     try {
       const investments = await this.getFundInvestmentHistory(fundId);
-      
+
       // 計算總投入、總贖回
       let totalDeposits = 0;
       let totalRedemptions = 0;
@@ -291,16 +333,16 @@ class FundDatabaseService {
       let totalSharesRedeemed = 0;
       const uniqueInvestors = new Set<string>();
 
-      investments.forEach(inv => {
+      investments.forEach((inv) => {
         const amount = parseFloat(inv.amount);
         const shares = parseFloat(inv.shares);
-        
+
         uniqueInvestors.add(inv.investorAddress.toLowerCase());
-        
-        if (inv.type === 'deposit') {
+
+        if (inv.type === "deposit") {
           totalDeposits += amount;
           totalSharesDeposited += shares;
-        } else if (inv.type === 'redeem') {
+        } else if (inv.type === "redeem") {
           totalRedemptions += amount;
           totalSharesRedeemed += shares;
         }
@@ -308,7 +350,7 @@ class FundDatabaseService {
 
       const netAssets = totalDeposits - totalRedemptions;
       const totalShares = totalSharesDeposited - totalSharesRedeemed;
-      const currentSharePrice = totalShares > 0 ? (netAssets / totalShares) : 1.0;
+      const currentSharePrice = totalShares > 0 ? netAssets / totalShares : 1.0;
 
       return {
         totalAssets: netAssets.toFixed(2),
@@ -317,18 +359,18 @@ class FundDatabaseService {
         totalRedemptions: totalRedemptions.toFixed(2),
         netAssets: netAssets.toFixed(2),
         totalShares: totalShares.toFixed(6),
-        currentSharePrice: currentSharePrice.toFixed(4)
+        currentSharePrice: currentSharePrice.toFixed(4),
       };
     } catch (error) {
-      console.error('Error calculating fund statistics:', error);
+      console.error("Error calculating fund statistics:", error);
       return {
-        totalAssets: '0.00',
+        totalAssets: "0.00",
         totalInvestors: 0,
-        totalDeposits: '0.00',
-        totalRedemptions: '0.00',
-        netAssets: '0.00',
-        totalShares: '0.000000',
-        currentSharePrice: '1.0000'
+        totalDeposits: "0.00",
+        totalRedemptions: "0.00",
+        netAssets: "0.00",
+        totalShares: "0.000000",
+        currentSharePrice: "1.0000",
       };
     }
   }
@@ -336,4 +378,10 @@ class FundDatabaseService {
 
 // 導出單例實例
 export const fundDatabaseService = new FundDatabaseService();
-export type { FundData, CreateFundData, InvestmentRecord, UserInvestmentSummary, SwapRecord };
+export type {
+  FundData,
+  CreateFundData,
+  InvestmentRecord,
+  UserInvestmentSummary,
+  SwapRecord,
+};

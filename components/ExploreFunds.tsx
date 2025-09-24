@@ -258,7 +258,7 @@ export default function ExploreFunds() {
                     </div>
 
                     <div className="mb-4 text-sm">
-                      <div className="flex justify-between">
+                      {/* <div className="flex justify-between">
                         <span className="text-gray-600">管理費:</span>
                         <span className="font-medium">
                           {(fund.managementFee / 100).toFixed(2)}%
@@ -269,7 +269,7 @@ export default function ExploreFunds() {
                         <span className="font-medium">
                           {(fund.performanceFee / 100).toFixed(2)}%
                         </span>
-                      </div>
+                      </div> */}
                       <div className="flex justify-between">
                         <span className="text-gray-600">計價資產:</span>
                         <span className="font-medium">
