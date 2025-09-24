@@ -8,8 +8,8 @@ import {
   COMPTROLLER_ABI,
   FEE_MANAGER_ABI,
   POLICY_MANAGER_ABI,
-//   MANAGEMENT_FEE_ABI,
-//   PERFORMANCE_FEE_ABI,
+  //   MANAGEMENT_FEE_ABI,
+  //   PERFORMANCE_FEE_ABI,
 } from "../lib/contracts";
 import { formatTokenAmount } from "../lib/contracts";
 import {
@@ -567,13 +567,12 @@ export default function ManagerFundDetails({
     );
 
     const feePromises = enabledFees.map(async (feeAddress: string) => {
-  return {
-    name: "Entrance Fee",
-    address: feeAddress,
-    value: `${Number(fund?.entranceFeePercent ?? 0)}%`,
-  };
-});
-
+      return {
+        name: "Entrance Fee",
+        address: feeAddress,
+        value: `${Number(fund?.entranceFeePercent ?? 0)}%`,
+      };
+    });
 
     const policyPromises = enabledPolicies.map(
       async (policyAddress: string) => {
@@ -1337,22 +1336,32 @@ export default function ManagerFundDetails({
                     預計獲得約{" "}
                     {(() => {
                       const amount = parseFloat(depositAmount);
-                      const sharePrice = parseFloat(fund.sharePrice || "1");
-                      const decimals = denominationAsset.decimals || 18;
+                      const dec = denominationAsset.decimals || 18;
+
+                      // 1) 先拿你已計算的有效 NAV（優先用 effectiveNav，避免用到原始 sharePrice）
+                      const navRaw = Number(effectiveNav);
+
+                      // 2) 規範化 NAV：若像 wei 一樣超大就除以 10^dec，若超小就乘以 10^dec，其餘維持不變
+                      const pow = Math.pow(10, dec);
+                      const nav =
+                        !Number.isFinite(navRaw) || navRaw <= 0
+                          ? 1
+                          : navRaw > 1000
+                          ? navRaw / pow
+                          : navRaw < 1e-6
+                          ? navRaw * pow
+                          : navRaw;
+
                       if (
                         !depositAmount ||
-                        isNaN(amount) ||
-                        !isFinite(amount) ||
-                        sharePrice <= 0 ||
-                        isNaN(sharePrice)
+                        !Number.isFinite(amount) ||
+                        amount <= 0 ||
+                        nav <= 0
                       ) {
                         return "0";
                       }
-                      // 先將金額轉為最小單位（如 USDC 6 decimals）
-                      const amountInWei = amount * Math.pow(10, decimals);
-                      const sharePriceInWei =
-                        sharePrice * Math.pow(10, decimals);
-                      const shares = amountInWei / sharePriceInWei;
+
+                      const shares = amount / nav; // 人類可讀金額 / 人類可讀 NAV
                       return shares.toLocaleString(undefined, {
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 6,

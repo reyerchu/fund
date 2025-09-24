@@ -14,6 +14,36 @@
       "txHash": "0xd7777b76018e7f8f80cc5e5505817cf73d245c6839aa70f97992fc298e30cdfa",
       "entranceFeePercent": 1,
       "entranceFeeRecipient": "0x419de5908691C84118D31B5D4C5F6276803944F0"
+    },
+    {
+      "id": "2",
+      "status": "active",
+      "createdAt": "2025-09-24T03:33:53.997Z",
+      "updatedAt": "2025-09-24T03:33:53.997Z",
+      "fundName": "Ethereum Private",
+      "fundSymbol": "ETHP",
+      "vaultProxy": "0x6b70fab652dd2a3Ccbbe276540dC5d973028a2B3",
+      "comptrollerProxy": "0xC35eb48c0d61762DF3552623e7C7aC6F14Cb63C4",
+      "denominationAsset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "creator": "0x5daa5d83198fd93468227df87f05bc6d71e2f356",
+      "txHash": "0x50d381d3afdbb4660215f7c87e183439f51c3ccf25ec24afe5d899fb2be08fd2",
+      "entranceFeePercent": 3,
+      "entranceFeeRecipient": "0x419de5908691C84118D31B5D4C5F6276803944F0"
+    },
+    {
+      "id": "3",
+      "status": "active",
+      "createdAt": "2025-09-24T03:35:53.175Z",
+      "updatedAt": "2025-09-24T03:35:53.175Z",
+      "fundName": "Solana Private",
+      "fundSymbol": "SOLP",
+      "vaultProxy": "0x27Db35F9936fa34bc2497A1FcE8Db137ee21E4e4",
+      "comptrollerProxy": "0xeA4BE21bA906550268C1873ed35a2bCA7b12e421",
+      "denominationAsset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      "creator": "0x419de5908691c84118d31b5d4c5f6276803944f0",
+      "txHash": "0xd345c95ad28390aab1f6286f00265befa76047015fa09ac3e028eb72ef282b93",
+      "entranceFeePercent": 2,
+      "entranceFeeRecipient": "0x419de5908691C84118D31B5D4C5F6276803944F0"
     }
   ],
   "investments": [
@@ -30,8 +60,36 @@
       "txHash": "0x645f59ceca647b2da477e3dbc5d8b83a28f4f2767c4252d20a31185f789efb42",
       "timestamp": "2025-09-24T03:21:05.424Z",
       "status": "completed"
+    },
+    {
+      "id": "2",
+      "fundId": "1",
+      "fundName": "Bitcoin ETF",
+      "fundSymbol": "BETF",
+      "investorAddress": "0x419de5908691c84118d31b5d4c5f6276803944f0",
+      "type": "deposit",
+      "amount": "2",
+      "shares": "2",
+      "sharePrice": "1.000000",
+      "txHash": "0xdeb0fea9448511a65c9ac68817a32f9c2b42153438087309e12ca4021da7a730",
+      "timestamp": "2025-09-24T03:32:05.845Z",
+      "status": "completed"
+    },
+    {
+      "id": "3",
+      "fundId": "3",
+      "fundName": "Solana Private",
+      "fundSymbol": "SOLP",
+      "investorAddress": "0x419de5908691c84118d31b5d4c5f6276803944f0",
+      "type": "deposit",
+      "amount": "3",
+      "shares": "3",
+      "sharePrice": "1.000000",
+      "txHash": "0xd2f20a63933b3f674a13e627317a794035566fc6ff06bdfcb3e61afe6b6bbe4c",
+      "timestamp": "2025-09-24T03:36:41.236Z",
+      "status": "completed"
     }
   ],
-  "lastFundId": 1,
-  "lastInvestmentId": 1
+  "lastFundId": 3,
+  "lastInvestmentId": 3
 }
