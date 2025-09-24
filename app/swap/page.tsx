@@ -1,6 +1,9 @@
 import SwapForm from '@/components/SwapForm';
 import Navigation from '../../components/Navigation';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export default function SwapPage() {
   return (
     <>

@@ -2,7 +2,7 @@
 
 import { FundService } from "@/lib/fund-service";
 import { ethers } from "ethers";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const TOKENS = [
   { symbol: "ASVT", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
@@ -11,10 +11,19 @@ const TOKENS = [
 ];
 
 export default function SwapForm({ onSwap }: { onSwap?: (data: any) => void }) {
-  if (!window.ethereum) return;
   const [fromToken, setFromToken] = useState(TOKENS[0]);
   const [toToken, setToToken] = useState(TOKENS[1]);
   const [amount, setAmount] = useState("");
+  const [isClient, setIsClient] = useState(false);
+
+  // Check if we're on the client side
+  useEffect(() => {
+    setIsClient(typeof window !== 'undefined');
+  }, []);
+
+  if (!isClient || !window.ethereum) {
+    return <div>Loading...</div>;
+  }
 
   const provider = new ethers.BrowserProvider(window.ethereum);
   const fundService = new FundService(provider);
