@@ -3,7 +3,7 @@ const nextConfig = {
   images: {
     domains: [],
   },
-  // 修復快取問題 - 減少快取時間
+  // 完全禁用快取
   async headers() {
     return [
       {
@@ -11,7 +11,15 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
           },
         ],
       },
